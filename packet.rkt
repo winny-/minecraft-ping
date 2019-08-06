@@ -5,27 +5,40 @@
 
          bitsyntax
 
+         "types.rkt"
          "varint.rkt")
+
+(provide (all-defined-out))
 
 (struct untyped-packet ([id : Integer]
                         [payload : Bytes])
   #:transparent)
+
+(: untyped-packet/length+bytes (Integer BitString -> untyped-packet))
+(define (untyped-packet/length+bytes len bs)
+  (bit-string-case bs
+    ([(packet-id :: (var-int))
+      (payload :: binary)]
+     (untyped-packet packet-id (bit-string->bytes payload)))))
 
 (define-syntax packet
   (syntax-rules ()
     [(_ #t input ks kf)
      (bit-string-case input
        ([(len :: (var-int))
-         (packet-id :: (var-int))
-         (payload :: binary bytes len)
+         (actual-payload :: binary bytes len)
          (rest :: binary)]
-        (ks (cast (untyped-packet packet-id (bit-string->bytes payload)) untyped-packet ) rest)))]
+        (ks (untyped-packet/length+bytes len (bit-string->bytes actual-payload)) rest))
+       (else (kf #t)))]
     [(_ #f pkt)
      (match-let ([(struct untyped-packet (id payload)) pkt])
+       (define actual-payload
+         (bit-string->bytes
+          (bit-string [id :: (var-int)]
+                     [payload :: binary])))
        (bit-string
-         [(bytes-length payload)  :: (var-int)]
-         [id :: (var-int)]
-         [payload :: binary]))]))
+        [(bytes-length actual-payload) :: (var-int)]
+        [actual-payload :: binary]))]))
 
 (: f (Bytes -> untyped-packet))
 (define (f b)
@@ -40,7 +53,7 @@
                   (format "in: ~v out: ~v" input expected)))
   (define-syntax-rule (check-packet-decode input expected)
     (check-equal? (bit-string-case (cast input BitString)
-                                   ([(res :: (packet))] res)) expected
+                    ([(res :: (packet))] res)) expected
                   (format "in: ~v out: ~v" input expected)))
 
   (define testcases
@@ -52,3 +65,49 @@
   (test-case "packet-decode"
     (for ([t testcases])
       (check-packet-decode (second t) (first t)))))
+
+
+(: write-packet (untyped-packet Output-Port -> Index))
+(define (write-packet pkt op)
+  (write-bytes (bit-string->bytes
+                (bit-string [pkt :: (packet)]))
+               op))
+
+(: read-packet (Input-Port -> (U EOF untyped-packet)))
+(define (read-packet ip)
+  (let loop ([buf (read-bytes 1 ip)])
+    (if (eof-object? buf)
+        eof
+        (bit-string-case (cast buf BitString)
+          ([(pkt :: (packet))]
+           pkt)
+          (else
+           (define e (read-bytes 1 ip))
+           (loop (if (eof-object? e)
+                     e
+                     (bytes-append buf e))))))))
+
+(struct handshake-packet ([protocol-version : Integer]
+                          [server-address : String]
+                          [server-port : Exact-Nonnegative-Integer]
+                          [next-state : Integer]))
+
+#;
+(define-syntax packet/handshake
+  (syntax-rules ()
+    [(_ #t input ks kf)
+     (bit-string-case input
+       ([pkt :: (packet)]
+        (match-define ([(struct untyped-packet (id payload)) pkt]))
+        (unless (= id 0)
+          (kf))
+        (bit-string-case payload
+          ([pv :: (var-int)]
+           )))
+       (else (kf)))]
+    [(_ #f pkt)
+     (match-let ([(struct untyped-packet (id payload)) pkt])
+       (bit-string
+        [(bytes-length payload)  :: (var-int)]
+        [id :: (var-int)]
+        [payload :: binary]))]))
