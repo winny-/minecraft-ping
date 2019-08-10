@@ -14,12 +14,6 @@
                         [payload : Bytes])
   #:transparent)
 
-(: untyped-packet/length+bytes (Integer BitString -> untyped-packet))
-(define (untyped-packet/length+bytes len bs)
-  (bit-string-case bs
-    ([(packet-id :: (var-int))
-      (payload :: binary)]
-     (untyped-packet packet-id (bit-string->bytes payload)))))
 
 (define-syntax packet
   (syntax-rules ()
@@ -28,22 +22,23 @@
        ([(len :: (var-int))
          (actual-payload :: binary bytes len)
          (rest :: binary)]
-        (ks (untyped-packet/length+bytes len (bit-string->bytes actual-payload)) rest))
+        (bit-string-case actual-payload
+          #:on-short kf
+          ([(packet-id :: (var-int))
+            (payload :: binary)]
+           (ks (untyped-packet packet-id (bit-string->bytes payload))
+               rest))
+          (else (kf))))
        (else (kf #t)))]
     [(_ #f pkt)
      (match-let ([(struct untyped-packet (id payload)) pkt])
        (define actual-payload
          (bit-string->bytes
           (bit-string [id :: (var-int)]
-                     [payload :: binary])))
+                      [payload :: binary])))
        (bit-string
         [(bytes-length actual-payload) :: (var-int)]
         [actual-payload :: binary]))]))
-
-(: f (Bytes -> untyped-packet))
-(define (f b)
-  (bit-string-case (cast b BitString)
-    ([( pkt :: (packet))] pkt)))
 
 (module+ test
   (require typed/rackunit)
