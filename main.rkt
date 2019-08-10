@@ -2,6 +2,7 @@
 
 
 (require racket/cmdline
+         racket/function
          racket/match
          racket/string
          "ping.rkt")
@@ -12,6 +13,17 @@
                    (hash-ref desc 'text)
                    desc))
   (regexp-replace* #rx"§." motd ""))
+
+(define (get-players json)
+  (define p (hash-ref json 'players))
+  (format "~a/~a~a"
+          (hash-ref p 'online)
+          (hash-ref p 'max)
+          (let ([sam (hash-ref p 'sample #f)])
+            (if (list? sam)
+                (format " (~a)"
+                        (string-join (map (curryr hash-ref 'name) sam)))
+                ""))))
 
 
 (module+ main
@@ -27,9 +39,7 @@
      (exit))
    (match-define (pong latency json) res)
    (printf "MotD:       ~a\n" (get-motd json))
-   (printf "Players:    ~a/~a\n"
-           (hash-ref (hash-ref json 'players) 'online)
-           (hash-ref (hash-ref json 'players) 'max))
+   (printf "Players:    ~a\n" (get-players json))
    (printf "Latency:    ~ams\n" latency)
    (printf "Version:    ~a\n" (hash-ref (hash-ref json 'version) 'name))
    ))
