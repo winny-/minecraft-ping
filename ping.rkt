@@ -3,19 +3,20 @@
 (provide (all-defined-out))
 
 (require typed/json
+         racket/function
          racket/match
          racket/math
          racket/tcp)
 
 (require bitsyntax)
 
-(require "varint.rkt" "types.rkt" "packet.rkt")
+(require "varint.rkt" "types.rkt" "packet.rkt" "json.rkt")
 
 (struct pong ([latency : Exact-Nonnegative-Integer]
-              [json : JSExpr])
+              [json : Response])
   #:transparent)
 
-(: server-list-ping ((String) (Integer) . ->* . (U pong EOF)))
+(: server-list-ping ((String) (Integer) . ->* . (U pong EOF #f)))
 (define (server-list-ping host [port 25565])
   (log-debug "Connecting to ~a:~a" host port)
   (define-values (ip op) (tcp-connect host port))
@@ -37,7 +38,8 @@
         eof
         (match-let ([(struct untyped-packet (_ payload)) res])
           (define s : String (bit-string-case (cast payload BitString) ([(str :: (mc-string))] str)))
-          (string->jsexpr s))))
+          (with-handlers ([exn:fail? (const #f)])
+            (read-Response (open-input-string s))))))
   (log-debug "Sending ping...")
   (define ts (exact-round (current-milliseconds)))
   (write-packet (untyped-packet 1 (bit-string->bytes
@@ -48,6 +50,6 @@
   (define latency (- (exact-round (current-milliseconds)) ts))
   (close-input-port ip)
   (close-output-port op)
-  (if (eof-object? json)
-      eof
+  (if (or (not json) (eof-object? json))
+      json
       (pong (cast latency Exact-Nonnegative-Integer)  json)))

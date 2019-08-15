@@ -1,0 +1,18 @@
+{
+    "version": {
+        "name": "1.8.7",
+        "protocol": 47
+    },
+    "players": {
+        "max": 100,
+        "online": 5,
+        "sample": [
+            {
+                "name": "thinkofdeath",
+                "id": "4566e69f-c907-48ee-8d71-d7ba5aa00d20"
+            }
+        ]
+    },
+    "description": "Basic description",
+    "favicon": "data:image/png;base64,<data>"
+}
