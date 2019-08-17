@@ -1,3 +1,9 @@
+#|
+
+Typed JSON parser for server-list-ping response from 1.7+ servers
+
+|#
+
 #lang typed/racket/base
 
 (require json-comb

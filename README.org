@@ -1,0 +1,10 @@
+* Minecraft Server List Ping for Racket
+
+  This is a utility and library to ping Minecraft servers. It
+  currently only supports Minecraft servers 1.7 and later. The API is
+  unstable and can change at any time.
+
+** To Do
+
+   - Detect and handle legacy servers
+   - Color parsing on the CLI
