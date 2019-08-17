@@ -9,6 +9,9 @@
          "ping.rkt"
          "json.rkt")
 
+(provide server-list-ping
+         (prefix-out minecraft- [combine-out server-list-ping pong Response Version Players Sample]))
+
 (module+ main
   (command-line
    #:args (host port)

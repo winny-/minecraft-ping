@@ -6,3 +6,5 @@
 (define pkg-desc "Ping Minecraft servers for status information")
 (define version "0.0")
 (define pkg-authors '(winny))
+(define racket-launcher-names '("minecraft-ping"))
+(define racket-launcher-libraries '("main.rkt"))
